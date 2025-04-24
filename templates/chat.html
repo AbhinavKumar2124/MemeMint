@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemeMint</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Righteous&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Panel - Meme Generation -->
+        <div class="left-panel">
+            <div class="panel-header">
+                <h1 class="text-2xl font-bold">MemeMint</h1>
+                <div class="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                </div>
+            </div>
+            
+            <div class="meme-preview">
+                <div class="preview-container">
+                    <img id="previewImage" src="" alt="Meme Preview" class="hidden">
+                </div>
+                <div class="preview-placeholder">
+                    <i class="fas fa-image"></i>
+                    <p>Your meme will appear here</p>
+                </div>
+            </div>
+
+            <div class="customization-panel">
+                <div class="style-selectors">
+                    <div class="style-group">
+                        <label>Aspect Ratio</label>
+                        <div class="style-buttons">
+                            <button class="active">1:1</button>
+                            <button>16:9</button>
+                            <button>9:16</button>
+                            <button class="share-btn" id="shareBtn" style="margin-left: auto;">
+                                <i class="fas fa-share-alt"></i>
+                                Share
+                            </button>
+                        </div>
+                    </div>
+                    <div class="style-group">
+                        <label>Style</label>
+                        <div class="style-buttons">
+                            <button class="active">Cartoon</button>
+                            <button>Realistic</button>
+                            <button>Anime</button>
+                            <button>Pixel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Chat Interface -->
+        <div class="right-panel">
+            <div class="chat-header">
+                <div class="chat-controls">
+                    <button id="newChat" class="new-chat-btn">
+                        <i class="fas fa-plus"></i>
+                        New Chat
+                    </button>
+                    <div class="chat-history-dropdown">
+                        <button class="dropdown-toggle">
+                            <i class="fas fa-history"></i>
+                            History
+                        </button>
+                        <div class="dropdown-content" id="chatHistory">
+                            <!-- Chat history will be added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <h2>Welcome to MemeMint!</h2>
+                    <p>Click on any topic or type your own to get started.</p>
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <div class="preference-selector">
+                    <label>Generation Preference:</label>
+                    <div class="preference-buttons">
+                        <button class="preference-btn active" data-preference="speed">
+                            <i class="fas fa-bolt"></i>
+                            Speed
+                        </button>
+                        <button class="preference-btn" data-preference="quality">
+                            <i class="fas fa-star"></i>
+                            Quality
+                        </button>
+                    </div>
+                </div>
+                <div class="quick-topics">
+                    <button class="topic-btn">
+                        <i class="fas fa-paw"></i>
+                        Funny Animals
+                    </button>
+                    <button class="topic-btn">
+                        <i class="fas fa-briefcase"></i>
+                        Work Life
+                    </button>
+                    <button class="topic-btn">
+                        <i class="fas fa-share-alt"></i>
+                        Social Media
+                    </button>
+                    <button class="topic-btn">
+                        <i class="fas fa-gamepad"></i>
+                        Gaming
+                    </button>
+                </div>
+                
+                <div class="input-container">
+                    <input type="text" id="userInput" placeholder="Describe your meme idea..." class="message-input">
+                    <button id="sendButton" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="imageModal" class="modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>MemeMint Preview</h3>
+                <button id="closeModal" class="close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <img id="modalImage" src="" alt="Meme Preview">
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='chat.js') }}"></script>
+</body>
+</html>
