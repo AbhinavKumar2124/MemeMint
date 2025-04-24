@@ -2,14 +2,17 @@ from flask import Flask, request, jsonify, render_template, session
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
-import json
 from datetime import datetime
+import json
+import requests
+import time
+from flask_sqlalchemy import SQLAlchemy
 
 ########################################################################################
 ########################################################################################
-import requests
-import json
-import time
+# import requests
+# import json
+# import time
 
 class PicLumenAPI:
     def __init__(self, authorization_token):
@@ -105,6 +108,27 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Required for session management
 
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///memes.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# Database Models
+class GeneratedMeme(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    prompt = db.Column(db.String(500), nullable=False)
+    image_url = db.Column(db.String(500), nullable=False)
+    aspect_ratio = db.Column(db.String(10), nullable=False)
+    style = db.Column(db.String(20), nullable=False)
+    preference = db.Column(db.String(10), nullable=False)
+    api_used = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_message = db.Column(db.String(500), nullable=False)
+
+# Create database tables
+with app.app_context():
+    db.create_all()
+
 # Initializing OpenRouter client for text generation
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
@@ -185,6 +209,7 @@ def generate_meme():
             api = PicLumenAPI(AUTHORIZATION_TOKEN)
             result = api.generate_image(meme_prompt, aspect_ratio=aspect_ratio, style=style)
             image_url = result[0]['imgUrl']
+            api_used = 'piclumen'
         else:
             # Use Recraft API for quality
             try:
@@ -217,6 +242,7 @@ def generate_meme():
                     raise Exception("Invalid response from Recraft API")
                     
                 image_url = image_response.data[0].url
+                api_used = 'recraft'
             except Exception as e:
                 print(f"Recraft API error: {str(e)}")
                 # Fallback to PicLumen if Recraft fails
@@ -224,6 +250,20 @@ def generate_meme():
                 api = PicLumenAPI(AUTHORIZATION_TOKEN)
                 result = api.generate_image(meme_prompt, aspect_ratio=aspect_ratio, style=style)
                 image_url = result[0]['imgUrl']
+                api_used = 'piclumen'
+        
+        # Store in database
+        new_meme = GeneratedMeme(
+            prompt=meme_prompt,
+            image_url=image_url,
+            aspect_ratio=aspect_ratio,
+            style=style,
+            preference=preference,
+            api_used=api_used,
+            user_message=topic
+        )
+        db.session.add(new_meme)
+        db.session.commit()
         
         # Update current chat with generated image
         new_chat['image_url'] = image_url
@@ -259,6 +299,24 @@ def new_chat():
     session['current_chat'] = []
     session.modified = True
     return jsonify({"status": "success"})
+
+@app.route('/meme-history', methods=['GET'])
+def get_meme_history():
+    try:
+        memes = GeneratedMeme.query.order_by(GeneratedMeme.created_at.desc()).all()
+        return jsonify([{
+            'id': meme.id,
+            'prompt': meme.prompt,
+            'image_url': meme.image_url,
+            'aspect_ratio': meme.aspect_ratio,
+            'style': meme.style,
+            'preference': meme.preference,
+            'api_used': meme.api_used,
+            'created_at': meme.created_at.isoformat(),
+            'user_message': meme.user_message
+        } for meme in memes])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

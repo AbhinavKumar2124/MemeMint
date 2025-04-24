@@ -234,8 +234,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add loading message
         console.log('Adding loading message');
-        const loadingMessage = addMessage('Generating your meme...', 'assistant');
-        loadingMessage.classList.add('loading');
+            const loadingMessage = addMessage('Generating your meme...', 'assistant');
+            loadingMessage.classList.add('loading');
 
         // Clear input
         userInput.value = '';
@@ -261,22 +261,22 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.error) {
                 throw new Error(data.error);
             }
-
+            
             // Remove loading message
             console.log('Removing loading message');
             loadingMessage.remove();
             
             // Add AI response to chat
             console.log('Adding AI response with image');
-            addMessage('', 'assistant', data.image_url, true);
-            // Update preview
+                addMessage('', 'assistant', data.image_url, true);
+                // Update preview
             console.log('Updating preview');
-            updatePreview(data.image_url);
+                updatePreview(data.image_url);
             
-            // Reload current chat and history to show new message
+                // Reload current chat and history to show new message
             console.log('Reloading chat history');
-            await loadCurrentChat();
-            await loadChatHistory();
+                await loadCurrentChat();
+                await loadChatHistory();
         } catch (error) {
             console.error('Error:', error);
             // Remove loading message

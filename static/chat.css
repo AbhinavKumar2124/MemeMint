@@ -699,7 +699,7 @@ button:disabled {
         transform: translate(-50%, 0);
         opacity: 1;
     }
-}
+} 
 
 .preference-selector {
     margin-bottom: 1rem;
