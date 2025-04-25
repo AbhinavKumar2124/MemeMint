@@ -153,11 +153,84 @@ def chat():
         session['current_chat'] = []
     return render_template('chat.html')
 
+@app.route('/chat-message', methods=['POST'])
+def chat_message():
+    try:
+        data = request.get_json()
+        message = data['message']
+        
+        # Initialize session variables if not exists
+        if 'chat_history' not in session:
+            session['chat_history'] = []
+        if 'current_chat' not in session:
+            session['current_chat'] = []
+        
+        # Create new chat entry for user message
+        new_chat = {
+            'timestamp': datetime.now().isoformat(),
+            'user_message': message,
+            'is_meme': False,
+            'type': 'user'
+        }
+        
+        # Add user message to current chat
+        session['current_chat'].append(new_chat)
+        
+        # If this is the first message in the current chat, add it to history
+        if len(session['current_chat']) == 1:
+            session['chat_history'].append(session['current_chat'])
+            # Limit chat history to last 10 chats
+            if len(session['chat_history']) > 10:
+                session['chat_history'] = session['chat_history'][-10:]
+        
+        session.modified = True
+        
+        # Generate a funny response using OpenRouter
+        print(openrouter.api_key)
+        completion = openrouter.chat.completions.create(
+            model="meta-llama/llama-3.3-70b-instruct:free",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"You are a funny, memer chatbot. Respond to this message in a humorous way and remeber not to entertain any other query, on such queries reply them in a savage way that you are a memer and not someone else according to the user's query and command them to use the .meme command to generate memes(only if you feel where user wants to generate meme and don't know how to do it) and also remeber to keep your response short and precise most of the times: {message}"
+                }
+            ]
+        )
+        
+        response = completion.choices[0].message.content
+        
+        # Create new chat entry for bot response
+        bot_chat = {
+            'timestamp': datetime.now().isoformat(),
+            'user_message': response,
+            'is_meme': False,
+            'type': 'assistant'
+        }
+        
+        # Add bot response to current chat
+        session['current_chat'].append(bot_chat)
+        session.modified = True
+        
+        return jsonify({
+            "response": response
+        })
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/generate', methods=['POST'])
 def generate_meme():
     try:
         data = request.get_json()
         topic = data['topic']
+        
+        # Check if the message starts with .meme
+        if not topic.startswith('.meme '):
+            return jsonify({"error": "Invalid meme command. Use '.meme' prefix to generate memes."}), 400
+            
+        # Remove the .meme prefix
+        topic = topic[6:].strip()
+        
         aspect_ratio = data.get('aspect_ratio', '1:1')
         style = data.get('style', 'cartoon')
         preference = data.get('preference', 'speed')  # Default to speed
@@ -168,10 +241,12 @@ def generate_meme():
         if 'current_chat' not in session:
             session['current_chat'] = []
         
-        # Create new chat entry
+        # Create new chat entry for user message
         new_chat = {
             'timestamp': datetime.now().isoformat(),
             'user_message': topic,
+            'is_meme': True,
+            'type': 'user',
             'aspect_ratio': aspect_ratio,
             'style': style,
             'preference': preference
@@ -213,29 +288,10 @@ def generate_meme():
         else:
             # Use Recraft API for quality
             try:
-                # # Map aspect ratio to size
-                # size_map = {
-                #     "1:1": "1024x1024",
-                #     "16:9": "1024x576",
-                #     "9:16": "576x1024"
-                # }
-                # size = size_map.get(aspect_ratio, "1024x1024")
-                
-                # # Map style to Recraft style
-                # style_map = {
-                #     "cartoon": "digital_illustration",
-                #     "realistic": "realistic_image",
-                #     "anime": "anime",
-                #     "pixel": "pixel_art"
-                # }
-                # recraft_style = style_map.get(style.lower(), "digital_illustration")
-
-                # Generate image with Recraft
                 image_response = recraft.images.generate(
                     prompt=meme_prompt,
                     style="digital_illustration",
                     model="recraftv3",
-                    #size=size
                 )
                 
                 if not image_response or not image_response.data or not image_response.data[0].url:
@@ -265,8 +321,17 @@ def generate_meme():
         db.session.add(new_meme)
         db.session.commit()
         
-        # Update current chat with generated image
-        new_chat['image_url'] = image_url
+        # Create new chat entry for bot response with image
+        bot_chat = {
+            'timestamp': datetime.now().isoformat(),
+            'user_message': '',  # Empty message since we're showing an image
+            'is_meme': True,
+            'type': 'assistant',
+            'image_url': image_url
+        }
+        
+        # Add bot response to current chat
+        session['current_chat'].append(bot_chat)
         session.modified = True
         
         return jsonify({
@@ -278,27 +343,46 @@ def generate_meme():
 
 @app.route('/chat-history', methods=['GET'])
 def get_chat_history():
-    return jsonify(session.get('chat_history', []))
+    try:
+        # Ensure chat_history exists in session
+        if 'chat_history' not in session:
+            session['chat_history'] = []
+        return jsonify(session.get('chat_history', []))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/current-chat', methods=['GET'])
 def get_current_chat():
-    return jsonify(session.get('current_chat', []))
+    try:
+        # Ensure current_chat exists in session
+        if 'current_chat' not in session:
+            session['current_chat'] = []
+        return jsonify(session.get('current_chat', []))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/new-chat', methods=['POST'])
 def new_chat():
-    # Save current chat to history if not empty
-    if 'current_chat' in session and session['current_chat']:
-        if 'chat_history' not in session:
-            session['chat_history'] = []
-        session['chat_history'].append(session['current_chat'])
-        # Limit chat history to last 10 chats
-        if len(session['chat_history']) > 10:
-            session['chat_history'] = session['chat_history'][-10:]
-    
-    # Clear current chat
-    session['current_chat'] = []
-    session.modified = True
-    return jsonify({"status": "success"})
+    try:
+        # Save current chat to history if not empty
+        if 'current_chat' in session and session['current_chat']:
+            if 'chat_history' not in session:
+                session['chat_history'] = []
+            
+            # Only add to history if it's not already there
+            if session['current_chat'] not in session['chat_history']:
+                session['chat_history'].append(session['current_chat'])
+            
+            # Limit chat history to last 10 chats
+            if len(session['chat_history']) > 10:
+                session['chat_history'] = session['chat_history'][-10:]
+        
+        # Clear current chat
+        session['current_chat'] = []
+        session.modified = True
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/meme-history', methods=['GET'])
 def get_meme_history():

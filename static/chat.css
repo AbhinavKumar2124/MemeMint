@@ -26,7 +26,7 @@ body {
 
 .app-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 0.4fr 0.6fr;
     height: 100vh;
     width: 100vw;
     overflow: hidden;
@@ -42,6 +42,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    max-width: 40vw;
 }
 
 .panel-header {
@@ -320,7 +321,7 @@ body {
 }
 
 .message-content {
-    padding: 1rem 1.5rem;
+    padding: 0.1rem 1.5rem;
     border-radius: 1.25rem;
     background: var(--background);
     color: var(--text);
@@ -350,6 +351,7 @@ body {
 .message.user .message-content {
     background: var(--primary);
     color: white;
+    max-width: 100%;
 }
 
 .chat-input-area {
@@ -746,4 +748,106 @@ button:disabled {
 
 .preference-btn.active:hover {
     background: var(--primary-dark);
+}
+
+/* Markdown content styles */
+.markdown-content {
+    text-align: left;
+    width: 70%;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.markdown-content p {
+    margin: 0.5em 0;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+    margin: 1em 0 0.5em 0;
+    color: var(--primary);
+}
+
+.markdown-content a {
+    color: var(--primary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--primary);
+    transition: all 0.2s ease;
+}
+
+.markdown-content a:hover {
+    color: var(--primary-dark);
+    border-bottom-color: var(--primary-dark);
+}
+
+.markdown-content code {
+    background: var(--surface);
+    padding: 0.2em 0.4em;
+    border-radius: 0.25em;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.markdown-content pre {
+    background: var(--surface);
+    padding: 1em;
+    border-radius: 0.5em;
+    overflow-x: auto;
+    margin: 1em 0;
+}
+
+.markdown-content pre code {
+    background: none;
+    padding: 0;
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid var(--primary);
+    margin: 1em 0;
+    padding-left: 1em;
+    color: var(--text-secondary);
+}
+
+.markdown-content ul,
+.markdown-content ol {
+    margin: 1em 0;
+    padding-left: 2em;
+}
+
+.markdown-content li {
+    margin: 0.5em 0;
+}
+
+.markdown-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5em;
+    margin: 1em 0;
+}
+
+.message.user .markdown-content {
+    color: white;
+}
+
+.message.user .markdown-content a {
+    color: white;
+    border-bottom-color: white;
+}
+
+.message.user .markdown-content code {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.message.user .markdown-content pre {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.message.user .markdown-content blockquote {
+    border-left-color: white;
+    color: rgba(255, 255, 255, 0.8);
 } 

@@ -98,41 +98,56 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear existing history
             chatHistory.innerHTML = '';
             
-            // Add history items
-            history.forEach((chat, index) => {
-                const historyItem = document.createElement('div');
-                historyItem.className = 'history-item';
-                historyItem.innerHTML = `
-                    <i class="fas fa-comment-alt mr-2"></i>
-                    <span class="truncate">${chat[0].user_message}</span>
-                `;
-                historyItem.addEventListener('click', () => {
-                    // Clear current chat messages
-                    chatMessages.innerHTML = '';
+            // Add history items in reverse chronological order
+            history.reverse().forEach((chat, index) => {
+                if (chat && chat.length > 0) {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
                     
-                    // Load all messages from the selected chat
-                    chat.forEach(item => {
-                        // Add user message
-                        addMessage(item.user_message, 'user');
+                    // Get the first message from the chat
+                    const firstMessage = chat[0].user_message;
+                    const truncatedMessage = firstMessage.length > 30 
+                        ? firstMessage.substring(0, 30) + '...' 
+                        : firstMessage;
+                    
+                    historyItem.innerHTML = `
+                        <i class="fas fa-comment-alt mr-2"></i>
+                        <span class="truncate">${truncatedMessage}</span>
+                    `;
+                    
+                    historyItem.addEventListener('click', () => {
+                        // Clear current chat messages
+                        chatMessages.innerHTML = '';
                         
-                        // Add assistant message with image if available
-                        if (item.image_url) {
-                            addMessage('', 'assistant', item.image_url, true);
-                            // Update preview
-                            updatePreview(item.image_url);
+                        // Load all messages from the selected chat
+                        chat.forEach(item => {
+                            if (item.type === 'user') {
+                                addMessage(item.user_message, 'user');
+                            } else if (item.type === 'assistant') {
+                                if (item.image_url) {
+                                    addMessage('', 'assistant', item.image_url, true);
+                                    updatePreview(item.image_url);
+                                } else {
+                                    addMessage(item.user_message, 'assistant');
+                                }
+                            }
+                        });
+                        
+                        // Set current input values
+                        userInput.value = chat[chat.length - 1].user_message;
+                        
+                        // Set active style buttons if it's a meme chat
+                        if (chat[0].is_meme) {
+                            setActiveStyleButton('aspectRatio', chat[0].aspect_ratio);
+                            setActiveStyleButton('style', chat[0].style);
                         }
+                        
+                        // Close dropdown
+                        dropdownContent.style.display = 'none';
                     });
                     
-                    // Set current input values
-                    userInput.value = chat[chat.length - 1].user_message;
-                    // Set active style buttons
-                    setActiveStyleButton('aspectRatio', chat[chat.length - 1].aspect_ratio);
-                    setActiveStyleButton('style', chat[chat.length - 1].style);
-                    
-                    // Close dropdown
-                    dropdownContent.style.display = 'none';
-                });
-                chatHistory.appendChild(historyItem);
+                    chatHistory.appendChild(historyItem);
+                }
             });
         } catch (error) {
             console.error('Error loading chat history:', error);
@@ -224,64 +239,96 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Starting message send:', message);
         hideWelcomeMessage();
         
-        // Get current style and aspect ratio
-        const currentStyle = document.querySelector('.style-group:nth-child(2) .style-buttons .active').textContent.toLowerCase();
-        const currentAspectRatio = document.querySelector('.style-group:first-child .style-buttons .active').textContent;
-
         // Add user message to chat
         console.log('Adding user message');
         addMessage(message, 'user');
 
-        // Add loading message
-        console.log('Adding loading message');
-            const loadingMessage = addMessage('Generating your meme...', 'assistant');
-            loadingMessage.classList.add('loading');
-
         // Clear input
         userInput.value = '';
 
-        try {
-            console.log('Sending request to generate meme');
-            const response = await fetch('/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    topic: message,
-                    aspect_ratio: currentAspectRatio,
-                    style: currentStyle,
-                    preference: currentPreference
-                })
-            });
+        let loadingMessage; // Declare loadingMessage outside the try block
 
-            const data = await response.json();
-            console.log('Received response:', data);
-            
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            
-            // Remove loading message
-            console.log('Removing loading message');
-            loadingMessage.remove();
-            
-            // Add AI response to chat
-            console.log('Adding AI response with image');
+        try {
+            if (message.startsWith('.meme ')) {
+                // Handle meme generation
+                console.log('Generating meme');
+                loadingMessage = addMessage('Generating your meme...', 'assistant');
+                loadingMessage.classList.add('loading');
+
+                // Get current style and aspect ratio
+                const currentStyle = document.querySelector('.style-group:nth-child(2) .style-buttons .active').textContent.toLowerCase();
+                const currentAspectRatio = document.querySelector('.style-group:first-child .style-buttons .active').textContent;
+
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        topic: message,
+                        aspect_ratio: currentAspectRatio,
+                        style: currentStyle,
+                        preference: currentPreference
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Received response:', data);
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Remove loading message
+                console.log('Removing loading message');
+                loadingMessage.remove();
+                
+                // Add AI response to chat
+                console.log('Adding AI response with image');
                 addMessage('', 'assistant', data.image_url, true);
                 // Update preview
-            console.log('Updating preview');
+                console.log('Updating preview');
                 updatePreview(data.image_url);
+            } else {
+                // Handle regular chat message
+                console.log('Sending regular chat message');
+                loadingMessage = addMessage('Thinking...', 'assistant');
+                loadingMessage.classList.add('loading');
+
+                const response = await fetch('/chat-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Received response:', data);
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Remove loading message
+                loadingMessage.remove();
+                
+                // Add AI response to chat
+                addMessage(data.response, 'assistant');
+            }
             
-                // Reload current chat and history to show new message
-            console.log('Reloading chat history');
-                await loadCurrentChat();
-                await loadChatHistory();
+            // Only reload chat history when needed (e.g., after new chat)
+            // await loadCurrentChat();
+            // await loadChatHistory();
         } catch (error) {
             console.error('Error:', error);
-            // Remove loading message
-            loadingMessage.remove();
-            showError('Sorry, there was an error generating your meme. Please try again.');
+            // Remove loading message if it exists
+            if (loadingMessage) {
+                loadingMessage.remove();
+            }
+            showError('Sorry, there was an error processing your message. Please try again.');
         }
     }
 
@@ -302,7 +349,17 @@ document.addEventListener('DOMContentLoaded', function() {
             messageContent.appendChild(thumbnail);
         } else if (text) {
             console.log('Adding text to message');
-            messageContent.textContent = text;
+            // Parse markdown and set as innerHTML
+            messageContent.innerHTML = marked.parse(text);
+            
+            // Add markdown-specific styling
+            messageContent.classList.add('markdown-content');
+            
+            // Add click handlers for links
+            messageContent.querySelectorAll('a').forEach(link => {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
+            });
         }
 
         messageDiv.appendChild(messageContent);
@@ -341,14 +398,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Load all messages from current chat
                 currentChat.forEach(item => {
-                    // Add user message
-                    addMessage(item.user_message, 'user');
-                    
-                    // Add assistant message with image if available
-                    if (item.image_url) {
-                        addMessage('', 'assistant', item.image_url, true);
-                        // Update preview
-                        updatePreview(item.image_url);
+                    if (item.type === 'user') {
+                        // Add user message
+                        addMessage(item.user_message, 'user');
+                    } else if (item.type === 'assistant') {
+                        // Add assistant message
+                        if (item.image_url) {
+                            addMessage('', 'assistant', item.image_url, true);
+                            // Update preview
+                            updatePreview(item.image_url);
+                        } else {
+                            addMessage(item.user_message, 'assistant');
+                        }
                     }
                 });
             }
@@ -380,7 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setActiveStyleButton('style', 'cartoon');
             
             // Reload chat history
-            loadChatHistory();
+            await loadChatHistory();
         } catch (error) {
             console.error('Error creating new chat:', error);
             showError('Failed to create new chat');
