@@ -101,8 +101,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add history items in reverse chronological order
             history.reverse().forEach((chat, index) => {
                 if (chat && chat.length > 0) {
-                    const historyItem = document.createElement('div');
-                    historyItem.className = 'history-item';
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
                     
                     // Get the first message from the chat
                     const firstMessage = chat[0].user_message;
@@ -110,43 +110,43 @@ document.addEventListener('DOMContentLoaded', function() {
                         ? firstMessage.substring(0, 30) + '...' 
                         : firstMessage;
                     
-                    historyItem.innerHTML = `
-                        <i class="fas fa-comment-alt mr-2"></i>
+                historyItem.innerHTML = `
+                    <i class="fas fa-comment-alt mr-2"></i>
                         <span class="truncate">${truncatedMessage}</span>
-                    `;
+                `;
                     
-                    historyItem.addEventListener('click', () => {
-                        // Clear current chat messages
-                        chatMessages.innerHTML = '';
-                        
-                        // Load all messages from the selected chat
-                        chat.forEach(item => {
+                historyItem.addEventListener('click', () => {
+                    // Clear current chat messages
+                    chatMessages.innerHTML = '';
+                    
+                    // Load all messages from the selected chat
+                    chat.forEach(item => {
                             if (item.type === 'user') {
-                                addMessage(item.user_message, 'user');
+                        addMessage(item.user_message, 'user');
                             } else if (item.type === 'assistant') {
-                                if (item.image_url) {
-                                    addMessage('', 'assistant', item.image_url, true);
-                                    updatePreview(item.image_url);
+                        if (item.image_url) {
+                            addMessage('', 'assistant', item.image_url, true);
+                            updatePreview(item.image_url);
                                 } else {
                                     addMessage(item.user_message, 'assistant');
                                 }
-                            }
-                        });
-                        
-                        // Set current input values
-                        userInput.value = chat[chat.length - 1].user_message;
+                        }
+                    });
+                    
+                    // Set current input values
+                    userInput.value = chat[chat.length - 1].user_message;
                         
                         // Set active style buttons if it's a meme chat
                         if (chat[0].is_meme) {
                             setActiveStyleButton('aspectRatio', chat[0].aspect_ratio);
                             setActiveStyleButton('style', chat[0].style);
                         }
-                        
-                        // Close dropdown
-                        dropdownContent.style.display = 'none';
-                    });
                     
-                    chatHistory.appendChild(historyItem);
+                    // Close dropdown
+                    dropdownContent.style.display = 'none';
+                });
+                    
+                chatHistory.appendChild(historyItem);
                 }
             });
         } catch (error) {
@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         console.log('Starting message send:', message);
         hideWelcomeMessage();
-        
+
         // Add user message to chat
         console.log('Adding user message');
         addMessage(message, 'user');
@@ -259,35 +259,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 const currentStyle = document.querySelector('.style-group:nth-child(2) .style-buttons .active').textContent.toLowerCase();
                 const currentAspectRatio = document.querySelector('.style-group:first-child .style-buttons .active').textContent;
 
-                const response = await fetch('/generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        topic: message,
-                        aspect_ratio: currentAspectRatio,
-                        style: currentStyle,
-                        preference: currentPreference
-                    })
-                });
+            const response = await fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    topic: message,
+                    aspect_ratio: currentAspectRatio,
+                    style: currentStyle,
+                    preference: currentPreference
+                })
+            });
 
-                const data = await response.json();
-                console.log('Received response:', data);
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                // Remove loading message
-                console.log('Removing loading message');
-                loadingMessage.remove();
-                
-                // Add AI response to chat
-                console.log('Adding AI response with image');
+            const data = await response.json();
+            console.log('Received response:', data);
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // Remove loading message
+            console.log('Removing loading message');
+            loadingMessage.remove();
+            
+            // Add AI response to chat
+            console.log('Adding AI response with image');
                 addMessage('', 'assistant', data.image_url, true);
                 // Update preview
-                console.log('Updating preview');
+            console.log('Updating preview');
                 updatePreview(data.image_url);
             } else {
                 // Handle regular chat message
@@ -326,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error:', error);
             // Remove loading message if it exists
             if (loadingMessage) {
-                loadingMessage.remove();
+            loadingMessage.remove();
             }
             showError('Sorry, there was an error processing your message. Please try again.');
         }
@@ -399,14 +399,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Load all messages from current chat
                 currentChat.forEach(item => {
                     if (item.type === 'user') {
-                        // Add user message
-                        addMessage(item.user_message, 'user');
+                    // Add user message
+                    addMessage(item.user_message, 'user');
                     } else if (item.type === 'assistant') {
                         // Add assistant message
-                        if (item.image_url) {
-                            addMessage('', 'assistant', item.image_url, true);
-                            // Update preview
-                            updatePreview(item.image_url);
+                    if (item.image_url) {
+                        addMessage('', 'assistant', item.image_url, true);
+                        // Update preview
+                        updatePreview(item.image_url);
                         } else {
                             addMessage(item.user_message, 'assistant');
                         }
