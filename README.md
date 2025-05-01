@@ -2,7 +2,10 @@
 
 MemeMint is an AI-powered meme generation platform that combines chat functionality with advanced image generation capabilities. Create, customize, and share memes through an intuitive interface while chatting with a meme-savvy AI assistant.
 
-![MemeMint Interface]([screenshot_placeholder.png](https://ibb.co/WpNb9xqx))
+<p align="center">
+  <img src="https://github.com/AbhinavKumar2124/MemeMint/blob/master/Images/Screenshot%20(99).png" width="45%" />
+  <img src="https://github.com/AbhinavKumar2124/MemeMint/blob/master/Images/Screenshot%20(100).png" width="45%" />
+</p>
 
 ## ✨ Features
 
