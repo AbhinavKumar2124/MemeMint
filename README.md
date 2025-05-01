@@ -66,17 +66,12 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 RECRAFT_API_KEY=your_recraft_api_key_here
 ```
 
-5. Initialize the database:
-```bash
-flask run
-# The database will be automatically created on first run
-```
-
 ### Running the Application
 
 1. Start the Flask server:
 ```bash
 python app.py
+# The database will be automatically created on first run
 ```
 
 2. Open your browser and navigate to:
