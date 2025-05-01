@@ -45,8 +45,8 @@ MemeMint is an AI-powered meme generation platform that combines chat functional
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/mememint.git
-cd mememint
+git clone https://github.com/AbhinavKumar2124/MemeMint.git
+cd MemeMint
 ```
 
 2. Create and activate a virtual environment:
