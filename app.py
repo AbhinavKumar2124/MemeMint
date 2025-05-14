@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, render_template, session
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import requests
 import time
@@ -106,7 +106,12 @@ class PicLumenAPI:
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Required for session management
+# Use a fixed secret key from environment variable or a default value
+app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
+
+# Configure session settings
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Sessions last 7 days
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # Reset expiry timer on each request
 
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///memes.db'
@@ -124,6 +129,7 @@ class GeneratedMeme(db.Model):
     api_used = db.Column(db.String(20), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_message = db.Column(db.String(500), nullable=False)
+    session_id = db.Column(db.String(50), nullable=True)  # Add session_id to track which user created the meme
 
 # Create database tables
 with app.app_context():
@@ -140,17 +146,27 @@ recraft = OpenAI(
     api_key=os.getenv("RECRAFT_API_KEY")
 )
 
+@app.before_request
+def session_management():
+    """Initialize session data for new users and make sessions permanent"""
+    # Make session permanent with the configured lifetime
+    session.permanent = True
+    
+    # Generate a unique session ID if one doesn't exist
+    if 'user_id' not in session:
+        session['user_id'] = os.urandom(16).hex()
+        # Initialize empty structures for new users
+        session['chat_history'] = []
+        session['current_chat'] = []
+        session.modified = True
+        print(f"New session created: {session['user_id']}")
+
 @app.route('/')
 def home():
     return render_template('index.html')
 
 @app.route('/chat')
 def chat():
-    # Initialize chat history and current chat if not exists
-    if 'chat_history' not in session:
-        session['chat_history'] = []
-    if 'current_chat' not in session:
-        session['current_chat'] = []
     return render_template('chat.html')
 
 @app.route('/chat-message', methods=['POST'])
@@ -158,12 +174,6 @@ def chat_message():
     try:
         data = request.get_json()
         message = data['message']
-        
-        # Initialize session variables if not exists
-        if 'chat_history' not in session:
-            session['chat_history'] = []
-        if 'current_chat' not in session:
-            session['current_chat'] = []
         
         # Create new chat entry for user message
         new_chat = {
@@ -186,7 +196,6 @@ def chat_message():
         session.modified = True
         
         # Generate a funny response using OpenRouter
-        print(openrouter.api_key)
         completion = openrouter.chat.completions.create(
             model="meta-llama/llama-3.3-70b-instruct:free",
             messages=[
@@ -234,12 +243,6 @@ def generate_meme():
         aspect_ratio = data.get('aspect_ratio', '1:1')
         style = data.get('style', 'cartoon')
         preference = data.get('preference', 'speed')  # Default to speed
-        
-        # Initialize session variables if not exists
-        if 'chat_history' not in session:
-            session['chat_history'] = []
-        if 'current_chat' not in session:
-            session['current_chat'] = []
         
         # Create new chat entry for user message
         new_chat = {
@@ -308,7 +311,7 @@ def generate_meme():
                 image_url = result[0]['imgUrl']
                 api_used = 'piclumen'
         
-        # Store in database
+        # Store in database with session_id
         new_meme = GeneratedMeme(
             prompt=meme_prompt,
             image_url=image_url,
@@ -316,7 +319,8 @@ def generate_meme():
             style=style,
             preference=preference,
             api_used=api_used,
-            user_message=topic
+            user_message=topic,
+            session_id=session.get('user_id')  # Link meme to current session
         )
         db.session.add(new_meme)
         db.session.commit()
@@ -344,9 +348,6 @@ def generate_meme():
 @app.route('/chat-history', methods=['GET'])
 def get_chat_history():
     try:
-        # Ensure chat_history exists in session
-        if 'chat_history' not in session:
-            session['chat_history'] = []
         return jsonify(session.get('chat_history', []))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -354,9 +355,6 @@ def get_chat_history():
 @app.route('/current-chat', methods=['GET'])
 def get_current_chat():
     try:
-        # Ensure current_chat exists in session
-        if 'current_chat' not in session:
-            session['current_chat'] = []
         return jsonify(session.get('current_chat', []))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -365,10 +363,7 @@ def get_current_chat():
 def new_chat():
     try:
         # Save current chat to history if not empty
-        if 'current_chat' in session and session['current_chat']:
-            if 'chat_history' not in session:
-                session['chat_history'] = []
-            
+        if session['current_chat']:
             # Only add to history if it's not already there
             if session['current_chat'] not in session['chat_history']:
                 session['chat_history'].append(session['current_chat'])
@@ -387,7 +382,10 @@ def new_chat():
 @app.route('/meme-history', methods=['GET'])
 def get_meme_history():
     try:
-        memes = GeneratedMeme.query.order_by(GeneratedMeme.created_at.desc()).all()
+        # Get all memes for the current session
+        current_session_id = session.get('user_id')
+        memes = GeneratedMeme.query.filter_by(session_id=current_session_id).order_by(GeneratedMeme.created_at.desc()).all()
+        
         return jsonify([{
             'id': meme.id,
             'prompt': meme.prompt,
@@ -399,6 +397,45 @@ def get_meme_history():
             'created_at': meme.created_at.isoformat(),
             'user_message': meme.user_message
         } for meme in memes])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/clear-session', methods=['POST'])
+def clear_session():
+    """Endpoint to manually clear and reset the current session"""
+    try:
+        # Store the user_id before clearing
+        user_id = session.get('user_id')
+        
+        # Clear the entire session
+        session.clear()
+        
+        # Reinitialize with the same user_id (if we want to maintain the same identity)
+        # Or remove this to get a completely new session
+        if user_id:
+            session['user_id'] = user_id
+        else:
+            session['user_id'] = os.urandom(16).hex()
+            
+        # Initialize empty structures
+        session['chat_history'] = []
+        session['current_chat'] = []
+        session.modified = True
+        
+        return jsonify({"status": "success", "message": "Session reset successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/session-info', methods=['GET'])
+def session_info():
+    """Endpoint to get information about the current session (for debugging)"""
+    try:
+        return jsonify({
+            "user_id": session.get('user_id'),
+            "session_created_at": session.get('created_at', 'Unknown'),
+            "chat_history_count": len(session.get('chat_history', [])),
+            "current_chat_count": len(session.get('current_chat', []))
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
